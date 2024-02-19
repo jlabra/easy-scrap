@@ -9,3 +9,10 @@ services:
       POSTGRES_DB: ${POSTGRES_DB}
     ports:
       - "${POSTGRES_PORT}:5432"
+    networks:
+      - dagster-network
+
+networks:
+  dagster-network:
+    name: dagster-network
+    external: true
