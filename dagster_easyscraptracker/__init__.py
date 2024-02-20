@@ -1,14 +1,15 @@
 from importlib import resources
 from dagster import Definitions, load_assets_from_modules
 
-from . import assets
+from .assets import granulometry
 
-all_assets = load_assets_from_modules([assets])
+granulometry_assets = load_assets_from_modules([granulometry])
 
 defs = Definitions(
     assets=[
-        *all_assets, 
-
+        *granulometry_assets,
     ],
-    resources=[]
+    resources=[
+
+    ]
 )
