@@ -6,3 +6,10 @@ pycocotools
 matplotlib 
 onnxruntime 
 onnx 
+dagster
+dagster-webserver
+dagster-postgres
+dagster-cloud
+dagster-aws
+dagster-azure
+boto3
