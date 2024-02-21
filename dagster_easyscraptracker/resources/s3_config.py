@@ -1,4 +1,7 @@
-from dagster import Config
+from dagster import (
+    Config,
+    ConfigurableResource
+    )
 
 
 class S3Config(Config):
