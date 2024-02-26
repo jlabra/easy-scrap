@@ -2,13 +2,8 @@ storage:
   postgres:
     postgres_db:
       username:
-<<<<<<< HEAD
         env: POSTGRES_USER
-      password:
-=======
-        env: POSTGRES_USERNAME
       password: 
->>>>>>> 7682690 (added requirements)
         env: POSTGRES_PASSWORD
       hostname:
         env: POSTGRES_HOST
