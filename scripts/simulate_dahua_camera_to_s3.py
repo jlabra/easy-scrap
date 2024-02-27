@@ -17,8 +17,6 @@ load_dotenv(override=True)
 
 def main():
 
-    image = cv2.imread("./sample_image.jpg")
-
     user   = "est_elecmetal"
     camera = "camera_9E06326PAJEE7AC"
     bucket = os.environ["S3_BUCKET"]
@@ -32,7 +30,9 @@ def main():
     sample_file_path = ts.strftime("%Y-%m-%d/pic_001/%H.%M.%S[R][0@0][0][0].jpg")
     object_key = f"{user}/{camera}/{sample_file_path}"
 
-    img = cv2.imread("./sample_image.jpg")
+    filename = os.path.join(os.path.dirname(__file__), "sample_image.jpg")
+    
+    img = cv2.imread(filename)
     
     print(f"[{str(ts)}] - Upload to {object_key}")
 
