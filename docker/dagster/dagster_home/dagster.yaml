@@ -2,7 +2,7 @@ storage:
   postgres:
     postgres_db:
       username:
-        env: POSTGRES_USER
+        env: POSTGRES_USERNAME
       password: 
         env: POSTGRES_PASSWORD
       hostname:

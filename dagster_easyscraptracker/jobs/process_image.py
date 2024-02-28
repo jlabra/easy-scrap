@@ -1,5 +1,6 @@
 import re
 import json 
+from os import path
 
 from dagster import (   
         op, 
@@ -11,6 +12,9 @@ from dagster import (
 from ..resources import constants
 
 from dagster_aws.s3 import S3Resource
+
+# custom librarys
+from segment_anything import sam_model_registry, SamAutomaticMaskGenerator, SamPredictor
 
 
 class S3FileConfig(Config):
@@ -29,8 +33,13 @@ def get_camera_config(context, s3:S3Resource):
 
     pass
 
+
+
 @op
-def segmenting_image(context:OpExecutionContext, s3:S3Resource, config: S3FileConfig):
+def segmenting_image(context:OpExecutionContext, 
+                     s3:S3Resource, 
+                     config: S3FileConfig):
+    
     context.log.info(f"segmenting image from s3: {config.s3_key}")
     user, camera_id, date, _, filename = config.s3_key.split("/")
     year, month, day = [int(part) for part in date.split("-")] 
@@ -55,13 +64,18 @@ def segmenting_image(context:OpExecutionContext, s3:S3Resource, config: S3FileCo
         "filename": filename,
         "s3_key": config.s3_key
     }
+
+    
+    image = s3cli.get_object(Bucket="easyscraptracker", Key=config.s3_key).get("Body")
     
     context.log.info(f"segmenting image from s3: {config.s3_key}")
     context.log.info(f"config from {camera_id}: {camera_config}")
 
+    filepath = "../../data/20240109_155650751.jpg"
+    image = cv2.imread(filepath)
+    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
-    #metadata = {"preview": MetadataValue.json(data)}
-    #context.add_output_metadata(metadata=metadata)
+
     return data
 
 
