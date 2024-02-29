@@ -11,13 +11,14 @@ from typing import Tuple, Dict
 from dagster import (   
         op, 
         job, 
+        in_process_executor,
         Config,
         MetadataValue,
         OpExecutionContext,
         In        
 )
-from ..resources import constants
 
+from ..resources import constants
 from dagster_aws.s3 import S3Resource
 
 # custom librarys
@@ -43,6 +44,38 @@ def getSamPredictor():
     return mask_predictor
 
 
+def numpy_to_list(np_array):
+    return np_array.tolist()
+
+# filter masks by min/max area
+def filter_masks_by_area(masks, min_area=0, max_area=20000):
+    return [ mask for mask in masks if min_area<= mask["area"] <= max_area ]
+
+def get_masks_image(masks, input_image):
+    if len(masks) == 0:
+        return
+    
+    sorted_anns = sorted(masks, key=(lambda x: x['area'] ), reverse=True)
+
+    # create a image with same shape of input image
+    img = np.ones((input_image.shape[0], input_image.shape[1], 4), dtype=np.uint8)
+    img[:, :, 3] = 0  # Inicializar el canal alfa en cero
+    
+    for ann in sorted_anns:
+        m = ann['segmentation']
+        color_mask = np.concatenate([np.random.randint(0, 255, 3), [90]])  # Color aleatorio con opacidad 0.35
+        img[m] = color_mask
+
+    # convert input image to  RGBA (adding alpha channel)
+    input_image_rgba = cv2.cvtColor(input_image, cv2.COLOR_BGR2BGRA)
+
+    # overlay generated image to input image
+    output_image = cv2.addWeighted(input_image_rgba, 0.5, img, 0.5, 0)
+
+    # convert output image to BGR (delete alfa channel)
+    output_image = cv2.cvtColor(output_image, cv2.COLOR_BGRA2BGR)
+
+    return output_image
 
 @op
 def read_incomming_image(context:OpExecutionContext, 
@@ -89,8 +122,6 @@ def read_incomming_image(context:OpExecutionContext,
 
     return (image, camera_config, data)
 
-
-
 @op
 def segmenting_base_image(context: OpExecutionContext, upstream: tuple) -> Tuple:
     '''Return the cropped region of interest based on camera segmentation box'''
@@ -131,13 +162,14 @@ def segmenting_base_image(context: OpExecutionContext, upstream: tuple) -> Tuple
     return cropped_image, cropped_result, data
 
 
-def numpy_to_list(np_array):
-    return np_array.tolist()
+
 
 @op
 def segmenting_anything(context: OpExecutionContext, 
                         upstream: tuple):
     
+    ''' Return a set of N masks from sam algorith '''
+
     cropped_image, cropped_result, data = upstream
 
     # pass sam model to resource, or asset
@@ -159,42 +191,47 @@ def segmenting_anything(context: OpExecutionContext,
 
     # detected elements: 
     masks = mask_generator.generate(cropped_result)
+    filtered_masks = filter_masks_by_area(masks, min_area=0, max_area=20000)
+    # filter masks by area size
+    data["masks"] = filtered_masks
 
-    data["masks"] = masks
+    cropped_result_masked = get_masks_image(filtered_masks, cropped_result)
 
-    return cropped_image, cropped_result, data
+    return cropped_image, cropped_result, cropped_result_masked, data
 
 @op
 def upload_to_s3(context: OpExecutionContext, 
                  s3:S3Resource, 
                  upstream: tuple):
     
+    '''Upload all files from processing job to amazon S3 '''
+
     s3cli = s3.get_client()
 
-    cropped_image, cropped_result, data = upstream
+    cropped_image, cropped_result, cropped_result_masked, data = upstream
     
     bucket = os.environ["S3_BUCKET"]
 
-    
-    
     cropped_image_filename = f"cropped_image_{data['filename']}"
     cropped_segmented_image_filename = f"cropped_segmented_image_{data['filename']}"
-    output_path = "{0}/{1}/{2}/output".format(*data['s3_key'].split("/")[0:3])
+    cropped_segmented_image_masks_filename = f"cropped_segmented_image_masks_{data['filename']}"
+
+    output_path = "{0}/{1}/{2}/output".format(*data['s3_key'].split('/')[0:3])
+    output_path = f"{output_path}/{data['filename']}"
     
     object_key_image = f"{output_path}/{cropped_image_filename}"
     object_key_segmented_image = f"{output_path}/{cropped_segmented_image_filename}"
+    object_key_segmented_image_masks = f"{output_path}/{cropped_segmented_image_masks_filename}"
 
     object_key_data_lite = f"{output_path}/{cropped_image_filename.replace('.jpg','')}_data_lite_.json"
     object_key_data_full = f"{output_path}/{cropped_image_filename.replace('.jpg','')}_data_full_.json"
 
     data["base_image_key"] = object_key_image
     data["segmented_base_image_key"] = object_key_segmented_image
+    data["segmented_base_image_masks_key"] = object_key_segmented_image_masks
+
     data["data_full"] = object_key_data_full
     data["data_lite"] = object_key_data_lite
-
-    #context.log.info(f"json data:{data}")
-    
-    #transform mask to list (not numpy array )
     
     datafull = copy.deepcopy(data)
     for i, dm in enumerate(data["masks"]):
@@ -214,6 +251,8 @@ def upload_to_s3(context: OpExecutionContext,
     s3cli.upload_fileobj(BytesIO(img_buffer), bucket, object_key_image, ExtraArgs={'ContentType':'image/jpeg'})
     is_success, img_buffer = cv2.imencode('.jpg', cropped_result)
     s3cli.upload_fileobj(BytesIO(img_buffer), bucket, object_key_segmented_image, ExtraArgs={'ContentType':'image/jpeg'})
+    is_success, img_buffer = cv2.imencode('.jpg', cropped_result_masked)
+    s3cli.upload_fileobj(BytesIO(img_buffer), bucket, object_key_segmented_image_masks, ExtraArgs={'ContentType':'image/jpeg'})
 
     #uploading results file file
     context.log.info(f"uploading data lite version")
@@ -221,8 +260,7 @@ def upload_to_s3(context: OpExecutionContext,
     context.log.info(f"uploading data full version")
     s3cli.put_object(Body=json_data_full, Bucket=bucket, Key=object_key_data_full, ContentType='application/json')
 
-
-
-@job
+#@job #use job only for production 
+@job(executor_def=in_process_executor)
 def process_image_job():
     upload_to_s3(segmenting_anything(segmenting_base_image(read_incomming_image())))
