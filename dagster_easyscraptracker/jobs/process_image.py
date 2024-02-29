@@ -116,7 +116,7 @@ def segmenting_base_image(context: OpExecutionContext, upstream: tuple) -> Tuple
     context.log.info(f"segmenting_image - mask_predictor setting image...")
 
     # getting segmented object results for camera segmentation base box
-    masks, scores, logits = mask_predictor.predict(box=np.array([x, y, (x+w), (y+h)]), multimask_output=True)
+    masks, scores, logits = mask_predictor.predict(box=np.array([x, y, (x+w), (y+h)]), multimask_output=False)
 
     result = image*np.transpose(masks, (1, 2, 0))
     
@@ -214,7 +214,7 @@ def upload_to_s3(context: OpExecutionContext,
     s3cli.upload_fileobj(BytesIO(img_buffer), bucket, object_key_image, ExtraArgs={'ContentType':'image/jpeg'})
     is_success, img_buffer = cv2.imencode('.jpg', cropped_result)
     s3cli.upload_fileobj(BytesIO(img_buffer), bucket, object_key_segmented_image, ExtraArgs={'ContentType':'image/jpeg'})
-    
+
     #uploading results file file
     context.log.info(f"uploading data lite version")
     s3cli.put_object(Body=json_data, Bucket=bucket, Key=object_key_data_lite, ContentType='application/json')
