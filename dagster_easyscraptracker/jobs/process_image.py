@@ -124,6 +124,7 @@ def read_incomming_image(context:OpExecutionContext,
 
     return (image, camera_config, data)
 
+
 @op
 def segmenting_base_image(context: OpExecutionContext, upstream: tuple) -> Tuple:
     '''Return the cropped region of interest based on camera segmentation box'''
@@ -164,8 +165,6 @@ def segmenting_base_image(context: OpExecutionContext, upstream: tuple) -> Tuple
     return cropped_image, cropped_result, data
 
 
-
-
 @op
 def segmenting_anything(context: OpExecutionContext, 
                         upstream: tuple):
@@ -200,6 +199,7 @@ def segmenting_anything(context: OpExecutionContext,
     cropped_result_masked = get_masks_image(filtered_masks, cropped_result)
 
     return cropped_image, cropped_result, cropped_result_masked, data
+
 
 @op
 def upload_to_s3(context: OpExecutionContext, 
