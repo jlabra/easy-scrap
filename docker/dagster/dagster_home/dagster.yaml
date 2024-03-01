@@ -11,8 +11,3 @@ storage:
         env: POSTGRES_DB
       port: 
         env: POSTGRES_PORT
-
-execution:
-  multiprocess:
-    config:
-      max_concurrent: 2

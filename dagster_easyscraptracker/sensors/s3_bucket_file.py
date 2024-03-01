@@ -40,10 +40,11 @@ def bucket_sensor(context: SensorEvaluationContext, s3: S3Resource):
                     run_key=s3_key, 
                     run_config=RunConfig(
                         ops={
-                            "read_incomming_image": S3FileConfig(s3_key=s3_key),
-                            "segmenting_base_image": { "config": {"inputs": {"upstream":{"value": "read_incomming_image"}}}},
-                            "segmenting_anything": { "config": {"inputs": {"upstream":{"value": "segmenting_base_image"}}}},
-                            "upload_to_s3": { "config": {"inputs": {"upstream":{"value": "segmenting_anything"}}}},
+                            #"read_incomming_image": S3FileConfig(s3_key=s3_key),
+                            "read_incomming_image": {"config":{"s3_key":s3_key}},
+                            "segmenting_base_image":{},
+                            "segmenting_anything": {},
+                            "upload_to_s3": {},
                             },
                         execution={"config": {"multiprocess": {"max_concurrent": 1}}}
                     )

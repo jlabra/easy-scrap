@@ -114,7 +114,7 @@ def read_incomming_image(context:OpExecutionContext,
         "user": user, 
         "camera_id": camera_id,
         "filename": filename,
-        "s3_key": config.s3_key
+        "image_key": config.s3_key
     }
     
     # getting config for current camera
@@ -126,7 +126,7 @@ def read_incomming_image(context:OpExecutionContext,
     return (image, camera_config, data)
 
 
-@op
+@op(ins={"upstream": In()})
 def segmenting_base_image(context: OpExecutionContext, upstream: tuple) -> Tuple:
     '''Return the cropped region of interest based on camera segmentation box'''
     image, camera_config, data = upstream
@@ -166,7 +166,7 @@ def segmenting_base_image(context: OpExecutionContext, upstream: tuple) -> Tuple
     return cropped_image, cropped_result, data
 
 
-@op
+@op(ins={"upstream": In()})
 def segmenting_anything(context: OpExecutionContext, 
                         upstream: tuple):
     
@@ -196,6 +196,7 @@ def segmenting_anything(context: OpExecutionContext,
     filtered_masks = filter_masks_by_area(masks, min_area=0, max_area=20000)
     # filter masks by area size
     data["masks"] = filtered_masks
+
 
     cropped_result_masked = get_masks_image(filtered_masks, cropped_result)
 
@@ -241,10 +242,14 @@ def upload_to_s3(context: OpExecutionContext,
         #context.log.info(f"ON FOR: {dm}")
         x, y, w, h = (e for e in dm['bbox'])
         dm['mask_id'] = i
+        dm['class'] = 0
+        dm['class_name'] = 'unknown'
         #dm["segmentation"] = dm["segmentation"][y:(y+h), x:x+w].tolist()
         dm.__delitem__('segmentation')
         datafull['masks'][i]['mask_id'] = i
         datafull['masks'][i]['segmentation'] = datafull['masks'][i]['segmentation'][y:(y+h), x:x+w].tolist()
+        datafull['masks'][i]['class'] = 0
+        datafull['masks'][i]['class_name'] = 'unknown'
     
     json_data = json.dumps(data)
     json_data_full = json.dumps(datafull)
@@ -262,9 +267,6 @@ def upload_to_s3(context: OpExecutionContext,
     s3cli.put_object(Body=json_data, Bucket=bucket, Key=object_key_data_lite, ContentType='application/json')
     context.log.info(f"uploading data full version")
     s3cli.put_object(Body=json_data_full, Bucket=bucket, Key=object_key_data_full, ContentType='application/json')
-
-
-
 
 
 #@job(executor_def=in_process_executor) # for development 
