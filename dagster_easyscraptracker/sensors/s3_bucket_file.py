@@ -36,6 +36,17 @@ def bucket_sensor(context: SensorEvaluationContext, s3: S3Resource):
         last_key = new_s3_keys[-1]
         for s3_key in new_s3_keys:
             if "/output/" not in s3_key and ".jpg" in s3_key and APP_USER in s3_key:
-                yield RunRequest(run_key=s3_key, run_config=RunConfig(ops={"read_incomming_image": S3FileConfig(s3_key=s3_key)}))
+                yield RunRequest(
+                    run_key=s3_key, 
+                    run_config=RunConfig(
+                        ops={
+                            "read_incomming_image": S3FileConfig(s3_key=s3_key),
+                            "segmenting_base_image": { "config": {"inputs": {"upstream":{"value": "read_incomming_image"}}}},
+                            "segmenting_anything": { "config": {"inputs": {"upstream":{"value": "segmenting_base_image"}}}},
+                            "upload_to_s3": { "config": {"inputs": {"upstream":{"value": "segmenting_anything"}}}},
+                            },
+                        execution={"config": {"multiprocess": {"max_concurrent": 1}}}
+                    )
+                )
                 context.update_cursor(last_key)
             

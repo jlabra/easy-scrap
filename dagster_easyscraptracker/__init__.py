@@ -3,7 +3,8 @@ from importlib import resources
 
 from dagster import ( 
     Definitions, 
-    load_assets_from_modules
+    load_assets_from_modules, 
+    RunConfig
 )
 
 from dagster_aws.s3 import S3Resource
@@ -48,3 +49,6 @@ defs = Definitions(
         # )
     }
 )
+
+
+RunConfig()
