@@ -6,6 +6,7 @@ import numpy as np
 import os
 from io import BytesIO
 
+#import multiprocessing as mp
 from typing import Tuple, Dict
 
 from dagster import (   
@@ -15,7 +16,8 @@ from dagster import (
         Config,
         MetadataValue,
         OpExecutionContext,
-        In        
+        In,
+        DependencyDefinition
 )
 
 from ..resources import constants
@@ -260,7 +262,10 @@ def upload_to_s3(context: OpExecutionContext,
     context.log.info(f"uploading data full version")
     s3cli.put_object(Body=json_data_full, Bucket=bucket, Key=object_key_data_full, ContentType='application/json')
 
+
+
 #@job #use job only for production 
-@job(executor_def=in_process_executor)
+@job(executor_def=in_process_executor) # for development 
+#@job
 def process_image_job():
     upload_to_s3(segmenting_anything(segmenting_base_image(read_incomming_image())))
