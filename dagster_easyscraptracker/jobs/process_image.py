@@ -272,6 +272,6 @@ def upload_to_s3(context: OpExecutionContext,
 #@job(executor_def=in_process_executor) # for development 
 #@job(config={"execution": {"config": {"multiprocess": {"max_concurrent": 3},}}})
 #@job #use job only for production 
-@job
+@job(tags={"process_image": "sam"})
 def process_image_job():
     upload_to_s3(segmenting_anything(segmenting_base_image(read_incomming_image())))

@@ -11,3 +11,9 @@ storage:
         env: POSTGRES_DB
       port: 
         env: POSTGRES_PORT
+
+run_queue:
+  tag_concurrency_limits:
+    - key: "process_image"
+      value: "sam"
+      limit: 1
