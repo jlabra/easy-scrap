@@ -220,7 +220,7 @@ def upload_to_s3(context: OpExecutionContext,
     cropped_segmented_image_filename = f"cropped_segmented_image_{data['filename']}"
     cropped_segmented_image_masks_filename = f"cropped_segmented_image_masks_{data['filename']}"
 
-    output_path = "{0}/{1}/{2}/output".format(*data['s3_key'].split('/')[0:3])
+    output_path = "{0}/{1}/{2}/output".format(*data['image_key'].split('/')[0:3])
     output_path = f"{output_path}/{data['filename']}"
     
     object_key_image = f"{output_path}/{cropped_image_filename}"
