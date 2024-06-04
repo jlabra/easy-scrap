@@ -3,7 +3,7 @@ torch
 git+https://github.com/facebookresearch/segment-anything.git
 opencv-python 
 pycocotools 
-matplotlib 
+matplotlib==3.6
 onnxruntime 
 onnx 
 dagster
@@ -13,3 +13,4 @@ dagster-cloud
 dagster-aws
 dagster-azure
 boto3
+seaborn-image
